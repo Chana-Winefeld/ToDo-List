@@ -1,0 +1,135 @@
+/* ===== Reset ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #194350, #2c6975);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: #333;
+}
+
+/* ===== Container ===== */
+.todoapp {
+  background: #ffffff;
+  width: 100%;
+  max-width: 520px;
+  padding: 40px 30px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  transition: 0.3s ease;
+}
+
+.todoapp h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-weight: 600;
+  font-size: 32px;
+  color: #194350;
+}
+
+/* ===== Input ===== */
+.new-todo {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  font-size: 16px;
+  transition: 0.2s ease;
+}
+
+.new-todo:focus {
+  border-color: #2c6975;
+  box-shadow: 0 0 0 3px rgba(44, 105, 117, 0.15);
+  outline: none;
+}
+
+/* ===== List ===== */
+.todo-list {
+  list-style: none;
+  margin-top: 25px;
+}
+
+.todo-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f9f9f9;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: 0.2s ease;
+}
+
+.todo-list li:hover {
+  background: #f1f1f1;
+  transform: translateY(-2px);
+}
+
+.todo-list li.completed {
+  opacity: 0.6;
+}
+
+.todo-list li label {
+  flex: 1;
+  margin-left: 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.todo-list li.completed label {
+  text-decoration: line-through;
+}
+
+/* ===== Checkbox ===== */
+.toggle {
+  width: 18px;
+  height: 18px;
+  accent-color: #2c6975;
+  cursor: pointer;
+}
+
+/* ===== Delete Button ===== */
+.destroy {
+  position: relative;
+  background: transparent;
+  border: none;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  opacity: 0;
+  transition: 0.2s ease;
+}
+
+.todo-list li:hover .destroy {
+  opacity: 1;
+}
+
+/* יצירת ה-X דרך CSS */
+.destroy::before {
+  content: "×";
+  font-size: 22px;
+  color: #cc9a9a;
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  transition: 0.2s ease;
+}
+
+.destroy:hover::before {
+  color: #af5b5e;
+}
+
+/* ===== Footer ===== */
+.footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #888;
+}
