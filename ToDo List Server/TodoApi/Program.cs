@@ -19,8 +19,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ToDoDbContext>();
 
-// מפתח סודי (חייב להתאים למה שכתוב ב-Login)
-var key = Encoding.ASCII.GetBytes("ThisIsAStrongSecretKey12345678901234567890!");
+var keyString = "ThisIsAStrongSecretKey12345678901234567890!";
+var key = Encoding.ASCII.GetBytes(keyString);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -41,6 +41,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -51,57 +52,74 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// --- נתיבים (Routes) ---
+// --- Routes ---
 
-// שליפת משימות
+app.MapPost("/register", async (ToDoDbContext db, User user) => {
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { message = "User created" });
+});
+
+app.MapPost("/login", (ToDoDbContext db, User loginData) => {
+    var user = db.Users.FirstOrDefault(u => u.Username == loginData.Username && u.Password == loginData.Password);
+    if (user == null) return Results.Unauthorized();
+
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var tokenDescriptor = new SecurityTokenDescriptor
+    {
+        Subject = new ClaimsIdentity(new[] { 
+            new Claim(ClaimTypes.Name, user.Username ?? ""),
+            new Claim("id", user.Id.ToString()) 
+        }),
+        Expires = DateTime.UtcNow.AddDays(7),
+        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+    };
+    
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+    return Results.Ok(new { token = tokenHandler.WriteToken(token) });
+});
+
 app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) => 
 {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (string.IsNullOrEmpty(userIdClaim)) return Results.Unauthorized();
-    
-    var userId = int.Parse(userIdClaim);
-    return await db.Items.Where(i => i.UserId == userId).ToListAsync();
+    var idClaim = user.FindFirst("id")?.Value;
+    if (idClaim == null) return Results.Unauthorized();
+    int userId = int.Parse(idClaim);
+    return Results.Ok(await db.Items.Where(i => i.UserId == userId).ToListAsync());
 }).RequireAuthorization();
 
-// הוספת משימה
 app.MapPost("/items", async (ToDoDbContext db, Item item, ClaimsPrincipal user) => {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (string.IsNullOrEmpty(userIdClaim)) return Results.Unauthorized();
-
-    item.UserId = int.Parse(userIdClaim);
+    var idClaim = user.FindFirst("id")?.Value;
+    if (idClaim == null) return Results.Unauthorized();
+    item.UserId = int.Parse(idClaim);
     db.Items.Add(item);
     await db.SaveChangesAsync();
     return Results.Created($"/items/{item.Id}", item);
 }).RequireAuthorization();
 
-// עדכון משימה
 app.MapPut("/items/{id}", async (ToDoDbContext db, int id, Item inputItem, ClaimsPrincipal user) =>
 {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (string.IsNullOrEmpty(userIdClaim)) return Results.Unauthorized();
-    
-    var userId = int.Parse(userIdClaim);
-    var item = await db.Items.FindAsync(id);
+    var idClaim = user.FindFirst("id")?.Value;
+    if (idClaim == null) return Results.Unauthorized();
+    int userId = int.Parse(idClaim);
 
-    if (item is null) return Results.NotFound();
+    var item = await db.Items.FindAsync(id);
+    if (item == null) return Results.NotFound();
     if (item.UserId != userId) return Results.Forbid();
 
-    if (!string.IsNullOrEmpty(inputItem.Name)) item.Name = inputItem.Name;
+    item.Name = inputItem.Name ?? item.Name;
     item.IsComplete = inputItem.IsComplete;
 
     await db.SaveChangesAsync();
     return Results.NoContent();
 }).RequireAuthorization();
 
-// מחיקת משימה
 app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal user) => {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (string.IsNullOrEmpty(userIdClaim)) return Results.Unauthorized();
+    var idClaim = user.FindFirst("id")?.Value;
+    if (idClaim == null) return Results.Unauthorized();
+    int userId = int.Parse(idClaim);
 
-    var userId = int.Parse(userIdClaim);
     var item = await db.Items.FindAsync(id);
-
-    if (item is null) return Results.NotFound();
+    if (item == null) return Results.NotFound();
     if (item.UserId != userId) return Results.Forbid();
 
     db.Items.Remove(item);
