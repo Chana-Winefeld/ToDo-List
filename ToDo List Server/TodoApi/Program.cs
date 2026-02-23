@@ -20,8 +20,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// חיבור למסד הנתונים - מותאם למבנה ה-JSON שלך ול-Environment של Render
+// חיבור למסד הנתונים
 var connectionString = builder.Configuration["ToDoDB"] ?? builder.Configuration.GetConnectionString("ToDoDB");
 
 builder.Services.AddDbContext<ToDoDbContext>(options =>
@@ -62,14 +61,12 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseCors("AllowSpecificOrigin");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 // --- 4. נתיבים (Routes) ---
 
 app.MapPost("/register", async (ToDoDbContext db, RegisterRequest data) => {
-    // בדיקה אם המשתמש כבר קיים
     if (await db.Users.AnyAsync(u => u.Username == data.Username))
         return Results.BadRequest(new { message = "User already exists" });
 
@@ -82,7 +79,6 @@ app.MapPost("/register", async (ToDoDbContext db, RegisterRequest data) => {
     await db.SaveChangesAsync();
     return Results.Ok(new { message = "User created successfully" });
 });
-
 
 app.MapPost("/login", async (ToDoDbContext db, LoginRequest loginData) => {
     var user = await db.Users
@@ -155,9 +151,9 @@ app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal us
 }).RequireAuthorization();
 
 app.MapGet("/health", () => Results.Ok("Healthy"));
+
 app.Run();
 
-// DTO עבור ההתחברות
+// DTOs
 public record LoginRequest(string Username, string Password);
-// הוסיפי את השורה הזו בתחתית הקובץ, ליד ה-LoginRequest
 public record RegisterRequest(string Username, string Password);
