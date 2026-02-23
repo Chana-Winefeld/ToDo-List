@@ -10,7 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- 1. שירותים (Services) ---
 
-// הגדרת CORS - מאשר רק לקליינט שלך לגשת
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin",
@@ -22,8 +21,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// חיבור למסד הנתונים עם הגנת קריסה (Retry)
-var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
+// חיבור למסד הנתונים - מותאם למבנה ה-JSON שלך ול-Environment של Render
+var connectionString = builder.Configuration["ToDoDB"] ?? builder.Configuration.GetConnectionString("ToDoDB");
+
 builder.Services.AddDbContext<ToDoDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
@@ -54,12 +54,11 @@ var app = builder.Build();
 
 // --- 3. הגדרות הרצה (Middleware) ---
 
-// פתיחת Swagger תמיד (גם ב-Production) כדי שנוכל לבדוק ב-Render
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Todo API V1");
-    c.RoutePrefix = string.Empty; // הופך את הסווגר לדף הבית של השרת
+    c.RoutePrefix = string.Empty; 
 });
 
 app.UseCors("AllowSpecificOrigin");
@@ -75,8 +74,11 @@ app.MapPost("/register", async (ToDoDbContext db, User user) => {
     return Results.Ok(new { message = "User created" });
 });
 
-app.MapPost("/login", (ToDoDbContext db, User loginData) => {
-    var user = db.Users.FirstOrDefault(u => u.Username == loginData.Username && u.Password == loginData.Password);
+app.MapPost("/login", async (ToDoDbContext db, LoginRequest loginData) => {
+    var user = await db.Users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(u => u.Username == loginData.Username && u.Password == loginData.Password);
+    
     if (user == null) return Results.Unauthorized();
 
     var tokenHandler = new JwtSecurityTokenHandler();
@@ -143,3 +145,6 @@ app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal us
 }).RequireAuthorization();
 
 app.Run();
+
+// DTO עבור ההתחברות
+public record LoginRequest(string Username, string Password);
