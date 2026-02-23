@@ -68,11 +68,21 @@ app.UseAuthorization();
 
 // --- 4. נתיבים (Routes) ---
 
-app.MapPost("/register", async (ToDoDbContext db, User user) => {
+app.MapPost("/register", async (ToDoDbContext db, RegisterRequest data) => {
+    // בדיקה אם המשתמש כבר קיים
+    if (await db.Users.AnyAsync(u => u.Username == data.Username))
+        return Results.BadRequest(new { message = "User already exists" });
+
+    var user = new User { 
+        Username = data.Username, 
+        Password = data.Password 
+    };
+
     db.Users.Add(user);
     await db.SaveChangesAsync();
-    return Results.Ok(new { message = "User created" });
+    return Results.Ok(new { message = "User created successfully" });
 });
+
 
 app.MapPost("/login", async (ToDoDbContext db, LoginRequest loginData) => {
     var user = await db.Users
@@ -148,3 +158,5 @@ app.Run();
 
 // DTO עבור ההתחברות
 public record LoginRequest(string Username, string Password);
+// הוסיפי את השורה הזו בתחתית הקובץ, ליד ה-LoginRequest
+public record RegisterRequest(string Username, string Password);
