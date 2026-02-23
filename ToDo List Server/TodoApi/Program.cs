@@ -8,16 +8,25 @@ using TodoApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// הגדרת CORS
+// --- 1. שירותים (Services) ---
+
+// הגדרת CORS - מאשר רק לקליינט שלך לגשת
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy("AllowSpecificOrigin",
+        policy => policy.WithOrigins("https://todo-listclient.onrender.com")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
 });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<ToDoDbContext>();
+
+// חיבור למסד הנתונים עם הגנת קריסה (Retry)
+var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
+builder.Services.AddDbContext<ToDoDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
+        mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
 
 var keyString = "ThisIsAStrongSecretKey12345678901234567890!";
 var key = Encoding.ASCII.GetBytes(keyString);
@@ -40,19 +49,25 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// --- 2. בניית האפליקציה (Build) ---
 var app = builder.Build();
 
-app.UseCors("AllowAll");
+// --- 3. הגדרות הרצה (Middleware) ---
+
+// פתיחת Swagger תמיד (גם ב-Production) כדי שנוכל לבדוק ב-Render
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Todo API V1");
+    c.RoutePrefix = string.Empty; // הופך את הסווגר לדף הבית של השרת
+});
+
+app.UseCors("AllowSpecificOrigin");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-// --- Routes ---
+// --- 4. נתיבים (Routes) ---
 
 app.MapPost("/register", async (ToDoDbContext db, User user) => {
     db.Users.Add(user);
