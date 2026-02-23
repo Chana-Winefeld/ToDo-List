@@ -7,7 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using TodoApi;
 
 var builder = WebApplication.CreateBuilder(args);
-
+// הגדרה שגורמת לשרת להתעלם מהבדלי אותיות גדולות/קטנות ב-JSON
+builder.Services.ConfigureHttpJsonOptions(options => {
+    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+    options.SerializerOptions.PropertyNamingPolicy = null; 
+});
 // --- 1. שירותים (Services) ---
 
 builder.Services.AddCors(options =>
@@ -122,7 +126,7 @@ app.MapPost("/items", async (ToDoDbContext db, ItemRequest data, ClaimsPrincipal
 
     var item = new Item { 
         Name = data.Name, 
-        IsComplete = data.IsComplete,
+        IsComplete = data.IsComplete, // התאמה לשם המדויק במחלקה שלך
         UserId = int.Parse(idClaim) 
     };
 
