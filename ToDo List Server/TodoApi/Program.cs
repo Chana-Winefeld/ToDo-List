@@ -154,6 +154,7 @@ app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal us
     return Results.Ok(item);
 }).RequireAuthorization();
 
+app.MapGet("/health", () => Results.Ok("Healthy"));
 app.Run();
 
 // DTO עבור ההתחברות
