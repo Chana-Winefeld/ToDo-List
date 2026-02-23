@@ -20,7 +20,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-// חיבור למסד הנתונים
+
 var connectionString = builder.Configuration["ToDoDB"] ?? builder.Configuration.GetConnectionString("ToDoDB");
 
 builder.Services.AddDbContext<ToDoDbContext>(options =>
@@ -48,10 +48,10 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// --- 2. בניית האפליקציה (Build) ---
+// --- 2. בניית האפליקציה ---
 var app = builder.Build();
 
-// --- 3. הגדרות הרצה (Middleware) ---
+// --- 3. Middleware ---
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -66,6 +66,7 @@ app.UseAuthorization();
 
 // --- 4. נתיבים (Routes) ---
 
+// הרשמה
 app.MapPost("/register", async (ToDoDbContext db, RegisterRequest data) => {
     if (await db.Users.AnyAsync(u => u.Username == data.Username))
         return Results.BadRequest(new { message = "User already exists" });
@@ -80,6 +81,7 @@ app.MapPost("/register", async (ToDoDbContext db, RegisterRequest data) => {
     return Results.Ok(new { message = "User created successfully" });
 });
 
+// התחברות
 app.MapPost("/login", async (ToDoDbContext db, LoginRequest loginData) => {
     var user = await db.Users
         .AsNoTracking()
@@ -102,24 +104,35 @@ app.MapPost("/login", async (ToDoDbContext db, LoginRequest loginData) => {
     return Results.Ok(new { token = tokenHandler.WriteToken(token) });
 });
 
+// קבלת כל המשימות
 app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) => 
 {
     var idClaim = user.FindFirst("id")?.Value;
     if (idClaim == null) return Results.Unauthorized();
     int userId = int.Parse(idClaim);
-    return Results.Ok(await db.Items.Where(i => i.UserId == userId).ToListAsync());
+    
+    var items = await db.Items.Where(i => i.UserId == userId).ToListAsync();
+    return Results.Ok(items);
 }).RequireAuthorization();
 
-app.MapPost("/items", async (ToDoDbContext db, Item item, ClaimsPrincipal user) => {
+// הוספת משימה חדשה - משתמש ב-ItemRequest למניעת שגיאות מבנה
+app.MapPost("/items", async (ToDoDbContext db, ItemRequest data, ClaimsPrincipal user) => {
     var idClaim = user.FindFirst("id")?.Value;
     if (idClaim == null) return Results.Unauthorized();
-    item.UserId = int.Parse(idClaim);
+
+    var item = new Item { 
+        Name = data.Name, 
+        IsComplete = data.IsComplete,
+        UserId = int.Parse(idClaim) 
+    };
+
     db.Items.Add(item);
     await db.SaveChangesAsync();
     return Results.Created($"/items/{item.Id}", item);
 }).RequireAuthorization();
 
-app.MapPut("/items/{id}", async (ToDoDbContext db, int id, Item inputItem, ClaimsPrincipal user) =>
+// עדכון משימה - משתמש ב-ItemRequest
+app.MapPut("/items/{id}", async (ToDoDbContext db, int id, ItemRequest inputItem, ClaimsPrincipal user) =>
 {
     var idClaim = user.FindFirst("id")?.Value;
     if (idClaim == null) return Results.Unauthorized();
@@ -136,6 +149,7 @@ app.MapPut("/items/{id}", async (ToDoDbContext db, int id, Item inputItem, Claim
     return Results.NoContent();
 }).RequireAuthorization();
 
+// מחיקת משימה
 app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal user) => {
     var idClaim = user.FindFirst("id")?.Value;
     if (idClaim == null) return Results.Unauthorized();
@@ -154,6 +168,7 @@ app.MapGet("/health", () => Results.Ok("Healthy"));
 
 app.Run();
 
-// DTOs
+// DTOs - האובייקטים שמייצגים את מה שמגיע מה-Frontend
 public record LoginRequest(string Username, string Password);
 public record RegisterRequest(string Username, string Password);
+public record ItemRequest(string Name, bool IsComplete);
