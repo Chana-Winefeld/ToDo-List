@@ -35,7 +35,13 @@ public partial class ToDoDbContext : DbContext
 
             entity.ToTable("items");
 
+            entity.HasIndex(e => e.UserId, "fk_items_users_idx");
+
             entity.Property(e => e.Name).HasMaxLength(100);
+
+            entity.HasOne(d => d.User).WithMany(p => p.Items)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_items_users");
         });
 
         modelBuilder.Entity<User>(entity =>
