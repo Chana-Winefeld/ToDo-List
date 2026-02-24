@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import service from './service.js';
 import Login from './Login';
-import Register from './Register'; // ודאי שיצרת קובץ כזה עם הקוד שנתתי קודם
+import Register from './Register';
 
 function App() {
   const [newTodo, setNewTodo] = useState("");
   const [todos, setTodos] = useState([]);
-  
-  // האם המשתמש מחובר? (בודק אם יש טוקן בזיכרון של הדפדפן)
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("token"));
-  
-  // האם להציג עכשיו את דף ההרשמה?
   const [isRegistering, setIsRegistering] = useState(false);
 
   async function getTodos() {
@@ -24,12 +20,10 @@ function App() {
     }
   }
 
-  // פונקציה שנקראת אחרי התחברות מוצלחת ב-Login.js
   const onLogin = () => {
     setIsAuthenticated(true);
   };
 
-  // פונקציית התנתקות
   const onLogout = () => {
     localStorage.removeItem("token");
     setIsAuthenticated(false);
@@ -55,94 +49,91 @@ function App() {
   }
 
   useEffect(() => {
-    if (isAuthenticated) {
-      getTodos();
-    }
+    if (isAuthenticated) getTodos();
   }, [isAuthenticated]);
 
-  // --- שלב הרינדור (מה רואים על המסך) ---
+  const completedCount = todos.filter(t => t.isComplete).length;
 
-  // 1. אם המשתמש לא מחובר
+  // ── AUTH ──
   if (!isAuthenticated) {
     return (
       <div className="auth-wrapper">
-        {isRegistering ? (
-          /* דף הרשמה */
-          <Register onBackToLogin={() => setIsRegistering(false)} />
-        ) : (
-          /* דף התחברות + כפתור מעבר להרשמה */
-          <div style={{ textAlign: 'center' }}>
-            <Login onLogin={onLogin} />
-            <button 
-              onClick={() => setIsRegistering(true)} 
-              style={styles.switchButton}
-            >
-              עוד לא רשומה? הירשמי כאן
-            </button>
-          </div>
-        )}
+        <div className="auth-card">
+          {isRegistering ? (
+            <Register onBackToLogin={() => setIsRegistering(false)} />
+          ) : (
+            <>
+              <Login onLogin={onLogin} />
+              <div className="auth-divider" style={{ marginTop: 20 }}><span>חדשה כאן?</span></div>
+              <button
+                className="auth-switch-btn"
+                style={{ width: '100%', marginTop: 0 }}
+                onClick={() => setIsRegistering(true)}
+              >
+                יצירת חשבון חינם
+              </button>
+            </>
+          )}
+        </div>
       </div>
     );
   }
 
-  // 2. אם המשתמש מחובר - מציגים את רשימת המשימות
+  // ── MAIN APP ──
   return (
-    <section className="todoapp">
-      <header className="header">
-        <div style={{ textAlign: 'right', padding: '10px' }}>
-            <button onClick={onLogout} style={styles.logoutButton}>התנתקות</button>
-        </div>
-        <h1>todos</h1>
-        <form onSubmit={createTodo}>
-          <input 
-            className="new-todo" 
-            placeholder="מה יש לנו לעשות היום?" 
-            value={newTodo} 
-            onChange={(e) => setNewTodo(e.target.value)} 
+    <div className="todoapp">
+      <div className="app-header">
+        <h1 className="app-title">my<span>tasks</span></h1>
+        <button className="logout-btn" onClick={onLogout}>התנתקות</button>
+      </div>
+
+      <form className="add-todo-form" onSubmit={createTodo}>
+        <div className="add-todo-wrapper">
+          <input
+            className="new-todo"
+            placeholder="הוסיפי משימה חדשה..."
+            value={newTodo}
+            onChange={(e) => setNewTodo(e.target.value)}
+            dir="rtl"
           />
-        </form>
-      </header>
-      <section className="main" style={{ display: "block" }}>
-        <ul className="todo-list">
-          {todos.map(todo => (
-            <li className={todo.isComplete ? "completed" : ""} key={todo.id}>
-              <div className="view">
-                <input 
-                  className="toggle" 
-                  type="checkbox" 
-                  checked={todo.isComplete} 
-                  onChange={(e) => updateCompleted(todo, e.target.checked)} 
-                />
-                <label>{todo.name}</label>
-                <button className="destroy" onClick={() => deleteTodo(todo.id)}></button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </section >
+          <button type="submit" className="add-btn">+ הוסיפי</button>
+        </div>
+      </form>
+
+      {todos.length > 0 && (
+        <div className="todo-stats" dir="rtl">
+          <strong>{todos.length}</strong> משימות •
+          <strong>{completedCount}</strong> הושלמו
+        </div>
+      )}
+
+      <ul className="todo-list">
+        {todos.map((todo, index) => (
+          <li
+            className={todo.isComplete ? "completed" : ""}
+            key={todo.id}
+            style={{ animationDelay: `${index * 0.05}s` }}
+          >
+            <input
+              className="toggle"
+              type="checkbox"
+              checked={todo.isComplete}
+              onChange={(e) => updateCompleted(todo, e.target.checked)}
+            />
+            <label className="todo-label" dir="rtl">{todo.name}</label>
+            <button className="destroy" onClick={() => deleteTodo(todo.id)}>×</button>
+          </li>
+        ))}
+      </ul>
+
+      {todos.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-icon">✦</div>
+          <p>אין משימות עדיין — הוסיפי את הראשונה!</p>
+        </div>
+      )}
+    </div>
   );
 }
-
-// עיצובים קטנים לכפתורים בתוך ה-App
-const styles = {
-  switchButton: {
-    background: 'none',
-    border: 'none',
-    color: '#007bff',
-    cursor: 'pointer',
-    textDecoration: 'underline',
-    marginTop: '10px'
-  },
-  logoutButton: {
-    padding: '5px 10px',
-    backgroundColor: '#ff4d4d',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '12px'
-  }
-};
 
 export default App;

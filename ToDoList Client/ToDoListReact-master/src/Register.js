@@ -6,63 +6,64 @@ const Register = ({ onBackToLogin }) => {
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleRegister = async (e) => {
         e.preventDefault();
         setError('');
         setMessage('');
-
+        setLoading(true);
         try {
             await service.register(username, password);
-            setMessage('נרשמת בהצלחה! עכשיו אפשר להתחבר.');
-            // אפשר להוסיף השהייה קלה ואז להחזיר לדף הלוגין
+            setMessage('נרשמת בהצלחה! מעביר לדף הכניסה...');
             setTimeout(() => onBackToLogin(), 2000);
         } catch (err) {
             setError('ההרשמה נכשלה. יתכן ששם המשתמש כבר תפוס.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h2 style={styles.title}>הרשמה למערכת</h2>
-                <form onSubmit={handleRegister} style={styles.form}>
-                    <input 
-                        type="text" 
-                        placeholder="בחר שם משתמש" 
+        <div style={{ width: '100%' }}>
+            <div className="auth-logo" style={{ marginBottom: 0 }}>
+                <h1>my<span>tasks</span></h1>
+                <p>צרי חשבון חדש</p>
+            </div>
+
+            <form onSubmit={handleRegister} className="auth-form" style={{ marginTop: 32 }}>
+                <div className="input-group">
+                    <input
+                        type="text"
+                        placeholder="בחרי שם משתמש"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        style={styles.input}
                         required
+                        dir="rtl"
                     />
-                    <input 
-                        type="password" 
-                        placeholder="בחר סיסמה" 
+                </div>
+                <div className="input-group">
+                    <input
+                        type="password"
+                        placeholder="בחרי סיסמה"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        style={styles.input}
                         required
+                        dir="rtl"
                     />
-                    {message && <p style={styles.success}>{message}</p>}
-                    {error && <p style={styles.error}>{error}</p>}
-                    <button type="submit" style={styles.button}>הירשמי עכשיו</button>
-                </form>
-                <button onClick={onBackToLogin} style={styles.linkButton}>חזרה להתחברות</button>
-            </div>
+                </div>
+                {message && <div className="auth-success">{message}</div>}
+                {error && <div className="auth-error">{error}</div>}
+                <button type="submit" className="auth-btn" disabled={loading}>
+                    {loading ? '...' : 'הרשמה'}
+                </button>
+                <div className="auth-divider"><span>או</span></div>
+                <button type="button" className="auth-switch-btn" onClick={onBackToLogin}>
+                    יש לי כבר חשבון — להתחברות
+                </button>
+            </form>
         </div>
     );
-};
-
-const styles = {
-    container: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' },
-    card: { backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', width: '350px' },
-    title: { textAlign: 'center', marginBottom: '20px' },
-    form: { display: 'flex', flexDirection: 'column' },
-    input: { padding: '12px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #ddd' },
-    button: { padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
-    success: { color: 'green', textAlign: 'center', marginBottom: '10px' },
-    error: { color: 'red', textAlign: 'center', marginBottom: '10px' },
-    linkButton: { marginTop: '15px', background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline', width: '100%' }
 };
 
 export default Register;
