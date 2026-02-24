@@ -7,12 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using TodoApi;
 
 var builder = WebApplication.CreateBuilder(args);
-// הגדרה שגורמת לשרת להתעלם מהבדלי אותיות גדולות/קטנות ב-JSON
+
 builder.Services.ConfigureHttpJsonOptions(options => {
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
-    options.SerializerOptions.PropertyNamingPolicy = null; 
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
-// --- 1. שירותים (Services) ---
 
 builder.Services.AddCors(options =>
 {
@@ -52,10 +51,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// --- 2. בניית האפליקציה ---
 var app = builder.Build();
-
-// --- 3. Middleware ---
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -67,8 +63,6 @@ app.UseSwaggerUI(c =>
 app.UseCors("AllowSpecificOrigin");
 app.UseAuthentication();
 app.UseAuthorization();
-
-// --- 4. נתיבים (Routes) ---
 
 // הרשמה
 app.MapPost("/register", async (ToDoDbContext db, RegisterRequest data) => {
@@ -119,14 +113,14 @@ app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) =>
     return Results.Ok(items);
 }).RequireAuthorization();
 
-// הוספת משימה חדשה - משתמש ב-ItemRequest למניעת שגיאות מבנה
+// הוספת משימה חדשה
 app.MapPost("/items", async (ToDoDbContext db, ItemRequest data, ClaimsPrincipal user) => {
     var idClaim = user.FindFirst("id")?.Value;
     if (idClaim == null) return Results.Unauthorized();
 
     var item = new Item { 
         Name = data.Name, 
-        IsComplete = data.IsComplete, // התאמה לשם המדויק במחלקה שלך
+        IsComplete = data.IsComplete,
         UserId = int.Parse(idClaim) 
     };
 
@@ -135,7 +129,7 @@ app.MapPost("/items", async (ToDoDbContext db, ItemRequest data, ClaimsPrincipal
     return Results.Created($"/items/{item.Id}", item);
 }).RequireAuthorization();
 
-// עדכון משימה - משתמש ב-ItemRequest
+// עדכון משימה
 app.MapPut("/items/{id}", async (ToDoDbContext db, int id, ItemRequest inputItem, ClaimsPrincipal user) =>
 {
     var idClaim = user.FindFirst("id")?.Value;
@@ -172,7 +166,6 @@ app.MapGet("/health", () => Results.Ok("Healthy"));
 
 app.Run();
 
-// DTOs - האובייקטים שמייצגים את מה שמגיע מה-Frontend
 public record LoginRequest(string Username, string Password);
 public record RegisterRequest(string Username, string Password);
 public record ItemRequest(string Name, bool IsComplete);
